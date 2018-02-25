@@ -54,7 +54,7 @@ public class Menu extends JFrame
 		setPreferredSize(new Dimension(300, 100));
 		pack();
 		setLocationRelativeTo(null);
-		setTitle("DraftKings Add-On");
+		setTitle("Fantasy Football Add-On");
 		
 		statsMenu.add(getQBItem());
 //		statsMenu.add(getRBItem());
