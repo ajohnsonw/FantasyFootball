@@ -49,7 +49,9 @@ public class PlayerData
 	
 	public static final int THREAD_COUNT = Integer.valueOf(System.getProperty("project.loaddata.threadpool", "64"));
 	public static final ExecutorService threadPool = Executors.newFixedThreadPool(THREAD_COUNT);
-	
+
+	private static WebCache cache;
+
 	/* TODO:
 	 *     1. Improve performance by caching/saving website data to disk and loading from disk instead of from network call.
 	 *        a. Implement structure for which files contain what data.
@@ -167,7 +169,16 @@ public class PlayerData
 			thr.printStackTrace();
 		}
 	}
-	
+
+	private synchronized static WebCache getCache()
+	{
+		if (cache == null) {
+			cache = new MemoryWebCache();
+		}
+
+		return cache;
+	}
+
 	class PlayerDataLoad extends Thread
 	{
 		private String type;
@@ -247,7 +258,10 @@ public class PlayerData
 					{
 						try
 						{
-							Document doc2 = Jsoup.parse(new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId="+categoryId+"&scoringPeriodId="+j+"&seasonId="+CALENDAR_YEAR), 10000);
+
+							URL url = new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId=" + categoryId + "&scoringPeriodId=" + j + "&seasonId=" + CALENDAR_YEAR);
+							String webContent = PlayerData.getCache().getWebContent(url);
+							Document doc2 = Jsoup.parse(webContent);
 							Elements weeklyPlayerData = null;
 							int recordsInResultSet = 50;
 							while(true)
@@ -267,7 +281,8 @@ public class PlayerData
 									
 									URL nextPage = new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId="+categoryId+"&scoringPeriodId="+j+
 											"&seasonId="+CALENDAR_YEAR+"&search=&startIndex="+recordsInResultSet);
-									doc2 = Jsoup.parse(nextPage, 10000);
+									webContent = PlayerData.getCache().getWebContent(nextPage);
+									doc2 = Jsoup.parse(webContent);
 
 									recordsInResultSet += 50;								
 //									if(thr instanceof java.net.ConnectException)
