@@ -80,7 +80,9 @@ public class PlayerData
 //			}
 			try
 			{
-				Document doc = Jsoup.parse(new URL("http://www.nfl.com/injuries?week="+WEEK_NUMBER), 10000);
+				URL url = new URL("http://www.nfl.com/injuries?week="+WEEK_NUMBER);
+				String webContent = PlayerData.getCache().getWebContent(url);
+				Document doc = Jsoup.parse(webContent);
 				Elements playersFromWebsite = doc.getElementsByClass("player-expanded");
 				Pattern p = Pattern.compile("[{][p][l][a][y][e][r].*[}]");
 				
@@ -153,7 +155,9 @@ public class PlayerData
 			}
 			else
 			{
-				Document doc = Jsoup.parse(new URL("http://www.foxsports.com/nfl/stats?season="+CALENDAR_YEAR+"&seasonType=1&week=0&category=Passing&team=1&opp=0"), 10000);
+				URL url = new URL("http://www.foxsports.com/nfl/stats?season=" + CALENDAR_YEAR + "&seasonType=1&week=0&category=Passing&team=1&opp=0");
+				String webContent = PlayerData.getCache().getWebContent(url);
+				Document doc = Jsoup.parse(webContent);
 				Elements teamList = doc.getElementsByTag("tr");
 				for(int i = 1; i < teamList.size(); i++)	//i Starts at 1 to skip header
 				{
@@ -311,7 +315,9 @@ public class PlayerData
 						}
 						catch(Throwable thr) { thr.printStackTrace(); singlePlayer.addWeeklyTotals(null); continue; }		
 					}
-					Document doc3 = Jsoup.parse(salaryURL, 10000);
+
+					String webContent = PlayerData.getCache().getWebContent(salaryURL);
+					Document doc3 = Jsoup.parse(webContent);
 	
 					String fullName  = singlePlayer.getFullNameReversed().replace(", EJ", ", E.J.").replace("Griffin", "Griffin III");
 					String fullList  = doc3.text();
@@ -395,8 +401,9 @@ public class PlayerData
 			{
 				playerListURL = new URL("http://www.nfl.com/stats/categorystats?tabSeq=1&statisticPositionCategory=TIGHT_END&qualified=true&season="+CALENDAR_YEAR+"&seasonType=REG");
 			}
-			
-			Document doc = Jsoup.parse(playerListURL, 10000);
+
+			String webContent = PlayerData.getCache().getWebContent(playerListURL);
+			Document doc = Jsoup.parse(webContent);
 			Elements websiteData = doc.getElementsByTag("tr");
 			if(websiteData.size() <= 0)
 				throw new Exception("No player data found from : " + playerListURL);
