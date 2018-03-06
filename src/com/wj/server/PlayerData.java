@@ -173,7 +173,7 @@ public class PlayerData
 	private synchronized static WebCache getCache()
 	{
 		if (cache == null) {
-			cache = new MemoryWebCache();
+			cache = new FileWebCache();
 		}
 
 		return cache;
