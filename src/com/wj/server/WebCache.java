@@ -12,12 +12,20 @@ import java.net.URL;
  */
 public abstract class WebCache
 {
+	protected boolean forceRefresh = false;
+	
+    protected abstract void setWebContentToCache(URL url, String webContent);
+    protected abstract String getWebContentFromCache(URL url);
+    
     public String getWebContent(URL url) throws IOException
     {
-        String webContent = this.getWebContentFromCache(url);
-        if (webContent != null) {
-            return webContent;
-        }
+    	if(!forceRefresh)
+    	{
+    		String webContent = this.getWebContentFromCache(url);
+    		if (webContent != null) {
+    			return webContent;
+    		}    		
+    	}
 
         BufferedReader in = new BufferedReader(
                 new InputStreamReader(url.openStream()));
@@ -33,7 +41,8 @@ public abstract class WebCache
         return webBuffer.toString();
     }
 
-    protected abstract void setWebContentToCache(URL url, String webContent);
-    protected abstract String getWebContentFromCache(URL url);
-
+    public void setForceRefresh(boolean forceRefresh)
+    {
+    	this.forceRefresh = forceRefresh;
+    }
 }
