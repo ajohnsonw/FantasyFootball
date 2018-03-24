@@ -9,6 +9,7 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -17,11 +18,12 @@ import com.wj.server.PlayerData;
 
 public class Menu extends JFrame
 {
-	protected JMenuBar menuBar 		  = new JMenuBar();
-	protected JMenu statsMenu  		  = new JMenu("Player Stats");
-	protected JMenu suggestionsMenu	  = new JMenu("Suggestions");
-	protected JMenuItem favoritesItem = new JMenuItem("Picks of the week");
-	protected PlayerData playerData   = new PlayerData();
+	protected JMenuBar menuBar 		  	= new JMenuBar();
+	protected JMenu statsMenu  		 	= new JMenu("Player Stats");
+	protected JMenu suggestionsMenu	  	= new JMenu("Suggestions");
+	protected JMenuItem favoritesItem 	= new JMenuItem("Picks of the week");
+	protected JMenuItem refreshDataItem = new JMenuItem("Refresh Data");
+	protected PlayerData playerData   	= new PlayerData();
 	
 	/*   TODO:
 	 *   1. Think of an "official" splash screen image.
@@ -68,7 +70,22 @@ public class Menu extends JFrame
 				SwingUtilities.invokeLater(new PanelWeeklyPick());	
 			}
 		});
+		refreshDataItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e)
+			{
+
+		        try 
+		        {
+		            Menu.this.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+		            playerData.getCache().setForceRefresh(true);
+		            playerData.loadData();
+		            JOptionPane.showMessageDialog(null, "Finished refreshing player data.");
+		        } 
+		        finally { Menu.this.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));}
+			}
+		});
 		suggestionsMenu.add(favoritesItem);
+		suggestionsMenu.add(refreshDataItem);
 		
 		// add menus to menubar
 		menuBar.add(statsMenu);

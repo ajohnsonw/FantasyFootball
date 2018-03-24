@@ -50,7 +50,7 @@ public class PlayerData
 	public static final int THREAD_COUNT = Integer.valueOf(System.getProperty("project.loaddata.threadpool", "64"));
 	public static final ExecutorService threadPool = Executors.newFixedThreadPool(THREAD_COUNT);
 
-	private static WebCache cache;
+	private WebCache cache;
 
 	/* TODO:
 	 *     1. Improve performance by caching/saving website data to disk and loading from disk instead of from network call.
@@ -81,7 +81,7 @@ public class PlayerData
 			try
 			{
 				URL url = new URL("http://www.nfl.com/injuries?week="+WEEK_NUMBER);
-				String webContent = PlayerData.getCache().getWebContent(url);
+				String webContent = getCache().getWebContent(url);
 				Document doc = Jsoup.parse(webContent);
 				Elements playersFromWebsite = doc.getElementsByClass("player-expanded");
 				Pattern p = Pattern.compile("[{][p][l][a][y][e][r].*[}]");
@@ -156,7 +156,7 @@ public class PlayerData
 			else
 			{
 				URL url = new URL("http://www.foxsports.com/nfl/stats?season=" + CALENDAR_YEAR + "&seasonType=1&week=0&category=Passing&team=1&opp=0");
-				String webContent = PlayerData.getCache().getWebContent(url);
+				String webContent = getCache().getWebContent(url);
 				Document doc = Jsoup.parse(webContent);
 				Elements teamList = doc.getElementsByTag("tr");
 				for(int i = 1; i < teamList.size(); i++)	//i Starts at 1 to skip header
@@ -174,7 +174,7 @@ public class PlayerData
 		}
 	}
 
-	private synchronized static WebCache getCache()
+	public synchronized WebCache getCache()
 	{
 		if (cache == null) {
 			cache = new FileWebCache();
@@ -264,7 +264,7 @@ public class PlayerData
 						{
 
 							URL url = new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId=" + categoryId + "&scoringPeriodId=" + j + "&seasonId=" + CALENDAR_YEAR);
-							String webContent = PlayerData.getCache().getWebContent(url);
+							String webContent = getCache().getWebContent(url);
 							Document doc2 = Jsoup.parse(webContent);
 							Elements weeklyPlayerData = null;
 							int recordsInResultSet = 50;
@@ -285,7 +285,7 @@ public class PlayerData
 									
 									URL nextPage = new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId="+categoryId+"&scoringPeriodId="+j+
 											"&seasonId="+CALENDAR_YEAR+"&search=&startIndex="+recordsInResultSet);
-									webContent = PlayerData.getCache().getWebContent(nextPage);
+									webContent = getCache().getWebContent(nextPage);
 									doc2 = Jsoup.parse(webContent);
 
 									recordsInResultSet += 50;								
@@ -316,7 +316,7 @@ public class PlayerData
 						catch(Throwable thr) { thr.printStackTrace(); singlePlayer.addWeeklyTotals(null); continue; }		
 					}
 
-					String webContent = PlayerData.getCache().getWebContent(salaryURL);
+					String webContent = getCache().getWebContent(salaryURL);
 					Document doc3 = Jsoup.parse(webContent);
 	
 					String fullName  = singlePlayer.getFullNameReversed().replace(", EJ", ", E.J.").replace("Griffin", "Griffin III");
@@ -402,7 +402,7 @@ public class PlayerData
 				playerListURL = new URL("http://www.nfl.com/stats/categorystats?tabSeq=1&statisticPositionCategory=TIGHT_END&qualified=true&season="+CALENDAR_YEAR+"&seasonType=REG");
 			}
 
-			String webContent = PlayerData.getCache().getWebContent(playerListURL);
+			String webContent = getCache().getWebContent(playerListURL);
 			Document doc = Jsoup.parse(webContent);
 			Elements websiteData = doc.getElementsByTag("tr");
 			if(websiteData.size() <= 0)
