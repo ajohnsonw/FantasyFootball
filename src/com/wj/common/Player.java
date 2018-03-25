@@ -15,12 +15,17 @@ public class Player
 	public int fumbles;
 	public int currentRank;
 	public int firstDowns;	
+	public String[] dkValue;
 	
 	public void setInitialData(String[] elementData){}
 	public void addWeeklyTotals(Elements e){}
-	public void setDKValue(String value){}
 	public void calculateAverageDKPoints() {}
 
+	public void setDKValue(String[] value) 
+	{
+		this.dkValue = value;
+	}
+	
 	public String getFullNameReversed()
 	{
 		String lastName  = name.substring(name.indexOf(" ")+1);
@@ -34,4 +39,6 @@ public class Player
 	{
 		this.isInjured = isInjured;
 	}
+	
+	
 }

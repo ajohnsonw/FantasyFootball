@@ -69,7 +69,8 @@ public class Toolbar extends JPanel implements Runnable
 					{
 						for(Component c : container.getComponents())
 						{
-							if(c.getName().replace(" ", "").contains(name.replace(" ", "")))
+							if(c != null && c.getName() != null && name != null
+								&& c.getName().replace(" ", "").contains(name.replace(" ", "")))
 							{
 								JTabbedPane pane = (JTabbedPane)c.getParent();
 								pane.setSelectedComponent(c);

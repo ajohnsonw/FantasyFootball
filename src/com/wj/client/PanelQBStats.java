@@ -8,15 +8,13 @@ import javax.swing.table.DefaultTableModel;
 
 import com.wj.client.lib.PlayerDataPanel;
 import com.wj.client.lib.PlayerPanel;
+import com.wj.common.Player;
 import com.wj.common.QBTotals;
 import com.wj.common.QuarterBack;
 
 public class PanelQBStats extends PlayerPanel
 {
 	protected ArrayList<QuarterBack> QBList = null;
-	protected Object[] columnNames 			= { "Week#", "team", "attempts", "attemptsPerGame", "completionPct", "touchdowns",
-												"yardsPerGame",	"completions", "currentRank", "firstDowns", "interceptions", 
-												"rating", "sacks", "totalYards", "yardsPerAttempt", };
 	
 	/*   TODO:
 	 *   1. Implement a PanelXXStats for each player type.
@@ -56,7 +54,8 @@ public class PanelQBStats extends PlayerPanel
 				playerTab.addTab(panel.getName(), panel);
 				if(i == 0)
 				{
-					((DefaultTableModel)grid.getModel()).setDataVector(panel.getRowData(), columnNames);
+					((DefaultTableModel)grid.getModel()).setDataVector(panel.getRowData(), panel.getColumnNames());
+					lineGraphPanel.setupGraph(panel.getPlayer());
 				}
 			}
 			
@@ -106,6 +105,16 @@ public class PanelQBStats extends PlayerPanel
 			}
 			
 			return list;
-		}		
+		}
+		
+		@Override
+		public String[] getColumnNames()
+		{
+			return new String[] { "Week#", "team", "attempts", "attemptsPerGame", "completionPct", "touchdowns",
+					"yardsPerGame",	"completions", "currentRank", "firstDowns", "interceptions", 
+					"rating", "sacks", "totalYards", "yardsPerAttempt", };
+		}
+		@Override
+		public Player getPlayer() { return QB; }
 	}
 }

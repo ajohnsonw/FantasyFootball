@@ -118,13 +118,6 @@ public class QuarterBack extends Player implements Comparable<QuarterBack>
 		}
 		this.weeklyTotals.add(weeklyTotals);
 	}
-
-	@Override
-	public void setDKValue(String value)
-	{
-		this.currentDKValue = Integer.valueOf(value);
-		this.name += " " + currentDKValue;
-	}
 	
 	public double getTouchdownsPerGame()
 	{

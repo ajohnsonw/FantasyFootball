@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +25,7 @@ import org.apache.commons.collections4.ListUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
 import com.wj.common.Player;
@@ -49,11 +51,16 @@ public class PlayerData
 	
 	public static final int THREAD_COUNT = Integer.valueOf(System.getProperty("project.loaddata.threadpool", "64"));
 	public static final ExecutorService threadPool = Executors.newFixedThreadPool(THREAD_COUNT);
+
+	private WebCache cache;
+
+	private HashMap<String, String[]> draftKingsSalaryMap = new HashMap<>();
 	
 	/* TODO:
 	 *     1. Improve performance by caching/saving website data to disk and loading from disk instead of from network call.
 	 *        a. Implement structure for which files contain what data.
 	 *        b. Could be worthwhile to connect to MSSQL/Oracle
+	 *        c. I need to mine the data and structure it on disk. Otherwise, the programming in this class is error-phone.
 	 *     2. Improve rankPlayers method. Specifically, improve (business) logic behind 'Player A is better than Player B'.
 	 *     3. Improve logic behind injuryList to not have to re-loop through all the players and make sure that they're accounted for.
 	 *     4. Evaluate abstracting out JSoup calls/implementation somehow to a data structure to clean up code.
@@ -67,18 +74,11 @@ public class PlayerData
 	{
 		try
 		{
-//			for(int weekNumber = 0; weekNumber <= WEEK_NUMBER; weekNumber++)
-//			{
-//				String fileName = weekNumber == 0? "F:/draftKings/currentTotals.txt" : "F:/draftKings/week_"+weekNumber+"_totals.txt";
-//				File file = new File(fileName);
-//				if(file.exists())
-//				{
-//					file.delete();
-//				}
-//			}
 			try
 			{
-				Document doc = Jsoup.parse(new URL("http://www.nfl.com/injuries?week="+WEEK_NUMBER), 10000);
+				URL url = new URL("http://www.nfl.com/injuries?week="+WEEK_NUMBER);
+				String webContent = getCache().getWebContent(url);
+				Document doc = Jsoup.parse(webContent);
 				Elements playersFromWebsite = doc.getElementsByClass("player-expanded");
 				Pattern p = Pattern.compile("[{][p][l][a][y][e][r].*[}]");
 				
@@ -107,18 +107,19 @@ public class PlayerData
 			}
 			catch(Throwable thr) { throw new RuntimeException(thr.getMessage()); }
 			
+			loadDKPoints();
 			loadQB();
 			loadRB();
 			loadWR();
 			loadTE();
-			loadTeam();
-
-			rankPlayers();
+//			loadTeam();
+			
 			while(((ThreadPoolExecutor)threadPool).getActiveCount() > 0)
 			{
 				System.out.println("Sleeping... " + ((ThreadPoolExecutor)threadPool).getActiveCount());
 				Thread.sleep(1 * 1000);
 			}
+			rankPlayers();
 
 
 		}
@@ -126,6 +127,46 @@ public class PlayerData
 		{
 			thr.printStackTrace();
 		}
+	}
+	
+	public void loadDKPoints()
+	{
+		String[] dkPointsArray = new String[WEEK_NUMBER];
+		for(int i = 1; i <= WEEK_NUMBER; i++)
+		{
+			try
+			{
+				URL playerSalary = new URL("http://rotoguru1.com/cgi-bin/fyday.pl?week="+i+"&game=dk");
+				String webContent = getCache().getWebContent(playerSalary);
+				Document doc = Jsoup.parse(webContent);		
+				Elements elements = doc.getElementsByTag("tr");
+				for(int j = 0; j < elements.size(); j++)
+				{
+					try
+					{
+						List<Node> playerDetails = elements.get(j).childNodes();
+						String nameLineItem = playerDetails.get(0).toString().substring(10);
+						String name = nameLineItem.substring(nameLineItem.indexOf(">") +1, nameLineItem.indexOf("<"));
+						String dkPointsLineItem = playerDetails.get(4).toString().substring(10);
+						String dkPoints = dkPointsLineItem.substring(dkPointsLineItem.indexOf("$")+1, dkPointsLineItem.indexOf("<"));
+						
+						if(draftKingsSalaryMap.containsKey(name))
+							dkPointsArray = draftKingsSalaryMap.get(name);
+						else
+							dkPointsArray = new String[WEEK_NUMBER];
+						
+						dkPointsArray[i-1] = dkPoints;
+						draftKingsSalaryMap.put(name, dkPointsArray);
+					}
+					catch(Throwable thr) { System.out.println(thr.getMessage()); }
+				}
+			}
+			catch(Throwable thr)
+			{
+				thr.printStackTrace();
+			}
+		}
+		
 	}
 	public static void main(String... args)
 	{
@@ -151,7 +192,9 @@ public class PlayerData
 			}
 			else
 			{
-				Document doc = Jsoup.parse(new URL("http://www.foxsports.com/nfl/stats?season="+CALENDAR_YEAR+"&seasonType=1&week=0&category=Passing&team=1&opp=0"), 10000);
+				URL url = new URL("http://www.foxsports.com/nfl/stats?season=" + CALENDAR_YEAR + "&seasonType=1&week=0&category=Passing&team=1&opp=0");
+				String webContent = getCache().getWebContent(url);
+				Document doc = Jsoup.parse(webContent);
 				Elements teamList = doc.getElementsByTag("tr");
 				for(int i = 1; i < teamList.size(); i++)	//i Starts at 1 to skip header
 				{
@@ -167,7 +210,16 @@ public class PlayerData
 			thr.printStackTrace();
 		}
 	}
-	
+
+	public synchronized WebCache getCache()
+	{
+		if (cache == null) {
+			cache = new FileWebCache();
+		}
+
+		return cache;
+	}
+
 	class PlayerDataLoad extends Thread
 	{
 		private String type;
@@ -247,7 +299,10 @@ public class PlayerData
 					{
 						try
 						{
-							Document doc2 = Jsoup.parse(new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId="+categoryId+"&scoringPeriodId="+j+"&seasonId="+CALENDAR_YEAR), 10000);
+
+							URL url = new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId=" + categoryId + "&scoringPeriodId=" + j + "&seasonId=" + CALENDAR_YEAR);
+							String webContent = getCache().getWebContent(url);
+							Document doc2 = Jsoup.parse(webContent);
 							Elements weeklyPlayerData = null;
 							int recordsInResultSet = 50;
 							while(true)
@@ -267,7 +322,8 @@ public class PlayerData
 									
 									URL nextPage = new URL("http://games.espn.go.com/ffl/leaders?&slotCategoryId="+categoryId+"&scoringPeriodId="+j+
 											"&seasonId="+CALENDAR_YEAR+"&search=&startIndex="+recordsInResultSet);
-									doc2 = Jsoup.parse(nextPage, 10000);
+									webContent = getCache().getWebContent(nextPage);
+									doc2 = Jsoup.parse(webContent);
 
 									recordsInResultSet += 50;								
 //									if(thr instanceof java.net.ConnectException)
@@ -296,12 +352,17 @@ public class PlayerData
 						}
 						catch(Throwable thr) { thr.printStackTrace(); singlePlayer.addWeeklyTotals(null); continue; }		
 					}
-					Document doc3 = Jsoup.parse(salaryURL, 10000);
+
+					String webContent = getCache().getWebContent(salaryURL);
+					Document doc3 = Jsoup.parse(webContent);
 	
 					String fullName  = singlePlayer.getFullNameReversed().replace(", EJ", ", E.J.").replace("Griffin", "Griffin III");
 					String fullList  = doc3.text();
 					fullList = fullList.substring(fullList.indexOf(fullName) +fullName.length());
-					singlePlayer.setDKValue(fullList.split(";")[4]);
+					if(draftKingsSalaryMap.containsKey(singlePlayer.getFullNameReversed())) 
+						singlePlayer.setDKValue(draftKingsSalaryMap.get(singlePlayer.getFullNameReversed()));
+					else
+						singlePlayer.setDKValue(new String[] {fullList.split(";")[4]});
 					singlePlayer.calculateAverageDKPoints();
 					
 					copyVector.add(singlePlayer);
@@ -380,8 +441,9 @@ public class PlayerData
 			{
 				playerListURL = new URL("http://www.nfl.com/stats/categorystats?tabSeq=1&statisticPositionCategory=TIGHT_END&qualified=true&season="+CALENDAR_YEAR+"&seasonType=REG");
 			}
-			
-			Document doc = Jsoup.parse(playerListURL, 10000);
+
+			String webContent = getCache().getWebContent(playerListURL);
+			Document doc = Jsoup.parse(webContent);
 			Elements websiteData = doc.getElementsByTag("tr");
 			if(websiteData.size() <= 0)
 				throw new Exception("No player data found from : " + playerListURL);
